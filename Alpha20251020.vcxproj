@@ -28,9 +28,13 @@
     <ResourceCompile Include="Alpha20251020.rc" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="Data\Data1.bmp" />
+    <Image Include="Data\air.bmp" />
+    <Image Include="Data\box.bmp" />
     <Image Include="Data\icon.ico" />
     <Image Include="Data\icon_.ico" />
+    <Image Include="Data\persona.bmp" />
+    <Image Include="Data\points.bmp" />
+    <Image Include="Data\walls.bmp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

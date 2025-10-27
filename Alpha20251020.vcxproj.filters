@@ -33,10 +33,22 @@
     <Image Include="Data\icon.ico">
       <Filter>资源文件</Filter>
     </Image>
-    <Image Include="Data\Data1.bmp">
+    <Image Include="Data\icon_.ico">
       <Filter>资源文件</Filter>
     </Image>
-    <Image Include="Data\icon_.ico">
+    <Image Include="Data\air.bmp">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="Data\persona.bmp">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="Data\points.bmp">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="Data\walls.bmp">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="Data\box.bmp">
       <Filter>资源文件</Filter>
     </Image>
   </ItemGroup>
