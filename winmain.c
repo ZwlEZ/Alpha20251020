@@ -4,26 +4,30 @@
 
 // 变量声明
 HINSTANCE hinstance = 0;
-HDC hdc = 0;
 
 // 位图和设备上下文声明
 HBITMAP airBmp = 0, wallBmp = 0, boxBmp = 0, pointBmp = 0, personaBmp = 0;
 HDC airDc = 0, wallDc = 0, boxDc = 0, pointDc = 0, personaDc = 0;
 
 // 关卡数据声明
-int levelSelection = 0;
+int levelSelection = 1;
 struct LEVEL
 {
 	unsigned char personaX, personaY;   // 人物坐标
-	unsigned char pointsX, pointsY;     // 目标点坐标
-	unsigned char pointsX_2, pointsY_2; // 第二个目标点坐标
+	unsigned char pointsX, pointsY;     // 积分点坐标
+	unsigned char pointsX_2, pointsY_2; // 第二个积分点坐标
+	unsigned char boxX, boxY;           // 箱子坐标
+	unsigned char boxX_2, boxY_2;       // 第二个箱子坐标
 	unsigned char scene[10][10];        // 场景数组
-
-}template[] = {
-    5, 5,
-    2, 2,
-    7, 7,
-    {
+}
+template[] =// 关卡模板数组
+{   // 关卡1
+    5, 4,// 人物坐标
+    2, 2,// 积分点坐标
+    7, 7,// 第二个积分点坐标
+	5, 5,// 箱子坐标
+	4, 6,// 第二个箱子坐标
+	{// 数组内数字代表场景元素，1为墙壁，0为空气，3为箱子，2为积分点，4为人物（一个不会存在的值）
         1,1,1,1,1,1,1,1,1,1,
         1,0,0,0,0,0,0,0,0,1,
         1,0,2,0,0,0,0,0,0,1,
@@ -35,9 +39,26 @@ struct LEVEL
         1,0,0,0,0,0,0,0,0,1,
         1,1,1,1,1,1,1,1,1,1
     },
-
+	// 关卡2
+    1, 1,// 人物坐标
+    8, 8,// 积分点坐标
+	1, 8,// 第二个积分点坐标
+	2, 2,// 箱子坐标
+    6, 7,// 第二个箱子坐标
+    {// 数组内数字代表场景元素，1为墙壁，0为空气，3为箱子，2为积分点，4为人物（一个不会存在的值）
+        1,1,1,1,1,1,1,1,1,1,
+        1,0,0,0,0,0,0,0,2,1,
+        1,0,3,0,1,1,1,1,0,1,
+        1,0,0,0,1,0,0,1,0,1,
+        1,1,1,0,1,0,0,1,0,1,
+        1,0,0,0,1,0,0,1,0,1,
+        1,0,1,1,1,0,0,1,0,1,
+        1,0,0,0,0,0,3,0,0,1,
+        1,0,0,0,0,0,0,0,2,1,
+        1,1,1,1,1,1,1,1,1,1
+	}
 };
-enum { AIR, WALL, BOX, POINTS_, PERSONA };
+enum { AIR, WALL, POINTS_, BOX, PERSONA };// 场景元素枚举
 
 // 窗口过程函数声明
 LRESULT CALLBACK WindowProc(HWND, UINT, WPARAM, LPARAM);
@@ -113,7 +134,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT mSgId, WPARAM wParam, LPARAM lParam)
     case WM_PAINT:// 绘制窗口内容
     {
         PAINTSTRUCT ps;
-        hdc = BeginPaint(hWnd, &ps);
+        HDC hdc = BeginPaint(hWnd, &ps);
         // 在此处添加绘图代码
         FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
         DrawScene(hWnd, hdc);
@@ -129,24 +150,37 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT mSgId, WPARAM wParam, LPARAM lParam)
     case WM_KEYDOWN:// 处理键盘按下事件
     {
         int wmId = LOWORD(wParam);
+		int x = template[levelSelection].personaX;
+		int y = template[levelSelection].personaY;
         switch (wmId)
         {
         case VK_ESCAPE:// 按下Esc键时关闭窗口
             PostMessage(hWnd, WM_CLOSE, 0, 0);
             return 0;
-        case VK_UP:
+		case VK_UP:// 角色移动控制
+            if (y > 0 && template[levelSelection].scene[y - 1][x] != WALL)
+			    template[levelSelection].personaY--;
 
-			return 0;
+            break;
 		case VK_DOWN:
+			if (y < 9 && template[levelSelection].scene[y + 1][x] != WALL)
+			template[levelSelection].personaY++;
 
-			return 0;
+			break;
 		case VK_LEFT:
+			if (x > 0 && template[levelSelection].scene[y][x - 1] != WALL)
+			template[levelSelection].personaX--;
 
-			return 0;
+			break;
 		case VK_RIGHT:
+			if (x < 9 && template[levelSelection].scene[y][x + 1] != WALL)
+			template[levelSelection].personaX++;
 
-			return 0;
+			break;
         }
+		HDC hdc = GetDC(hWnd);
+		DrawScene(hWnd, hdc);
+		ReleaseDC(hWnd, hdc);
     }
 	return 0;
 
@@ -210,18 +244,18 @@ void DrawScene(HWND hWnd, HDC hdc)
 			case WALL:
 				BitBlt(memDc, x * 96, y * 96, 96, 96, wallDc, 0, 0, SRCCOPY);
 				break;
-			case BOX:
-				BitBlt(memDc, x * 96, y * 96, 96, 96, boxDc, 0, 0, SRCCOPY);
-				break;
 			case POINTS_:
 				BitBlt(memDc, x * 96, y * 96, 96, 96, pointDc, 0, 0, SRCCOPY);
-				break;
-			case PERSONA:
-				BitBlt(memDc, x * 96, y * 96, 96, 96, personaDc, 0, 0, SRCCOPY);
 				break;
 			}
 		}
 	}
+    // 绘制人物
+    BitBlt(memDc, template[levelSelection].personaX * 96, template[levelSelection].personaY * 96, 96, 96, personaDc, 0, 0, SRCCOPY);
+    // 绘制箱子
+	BitBlt(memDc, template[levelSelection].boxX * 96, template[levelSelection].boxY * 96, 96, 96, boxDc, 0, 0, SRCCOPY);
+	BitBlt(memDc, template[levelSelection].boxX_2 * 96, template[levelSelection].boxY_2 * 96, 96, 96, boxDc, 0, 0, SRCCOPY);
+
     // 将内存DC内容复制到窗口DC
 	BitBlt(hdc, 0, 0, 960, 960, memDc, 0, 0, SRCCOPY);
     // 清理
