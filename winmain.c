@@ -10,7 +10,7 @@ HBITMAP airBmp = 0, wallBmp = 0, boxBmp = 0, pointBmp = 0, personaBmp = 0;
 HDC airDc = 0, wallDc = 0, boxDc = 0, pointDc = 0, personaDc = 0;
 
 // 关卡数据声明
-int levelSelection = 1;
+int levelSelection = 0;
 struct LEVEL
 {
 	unsigned char personaX, personaY;   // 人物坐标
@@ -65,6 +65,10 @@ LRESULT CALLBACK WindowProc(HWND, UINT, WPARAM, LPARAM);
 void LoadResources(HWND);
 void DrawScene(HWND, HDC);
 void ReleaseResources(void);
+void MoveUp(void);
+void MoveDown(void);
+void MoveLeft(void);
+void MoveRight(void);
 
 // 程序入口点
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nCmdShow)
@@ -150,31 +154,29 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT mSgId, WPARAM wParam, LPARAM lParam)
     case WM_KEYDOWN:// 处理键盘按下事件
     {
         int wmId = LOWORD(wParam);
-		int x = template[levelSelection].personaX;
-		int y = template[levelSelection].personaY;
         switch (wmId)
         {
         case VK_ESCAPE:// 按下Esc键时关闭窗口
             PostMessage(hWnd, WM_CLOSE, 0, 0);
             return 0;
 		case VK_UP:// 角色移动控制
-            if (y > 0 && template[levelSelection].scene[y - 1][x] != WALL)
-			    template[levelSelection].personaY--;
+		case 'W':
+			MoveUp();
 
             break;
 		case VK_DOWN:
-			if (y < 9 && template[levelSelection].scene[y + 1][x] != WALL)
-			template[levelSelection].personaY++;
+		case 'S':
+			MoveDown();
 
 			break;
 		case VK_LEFT:
-			if (x > 0 && template[levelSelection].scene[y][x - 1] != WALL)
-			template[levelSelection].personaX--;
+		case 'A':
+			MoveLeft();
 
 			break;
 		case VK_RIGHT:
-			if (x < 9 && template[levelSelection].scene[y][x + 1] != WALL)
-			template[levelSelection].personaX++;
+		case 'D':
+			MoveRight();
 
 			break;
         }
@@ -267,26 +269,52 @@ void DrawScene(HWND hWnd, HDC hdc)
 void ReleaseResources(void)
 {
     // 释放位图资源
-    DeleteObject(airBmp);
-    airBmp = NULL;
-	DeleteObject(wallBmp);
-	wallBmp = NULL;
-	DeleteObject(boxBmp);
-	boxBmp = NULL;
-	DeleteObject(pointBmp);
-	pointBmp = NULL;
-	DeleteObject(personaBmp);
-	personaBmp = NULL;
+	if(wallBmp) DeleteObject(wallBmp);
+	if(boxBmp) DeleteObject(boxBmp);
+	if(pointBmp) DeleteObject(pointBmp);
+    if(airBmp) DeleteObject(airBmp);
+	if(personaBmp) DeleteObject(personaBmp);
+	personaBmp = airBmp = wallBmp = boxBmp = pointBmp = NULL;
     // 删除设备上下文
-    DeleteDC(airDc);
-    airDc = NULL;
-    DeleteDC(wallDc);
-    wallDc = NULL;
-    DeleteDC(boxDc);
-    boxDc = NULL;
-    DeleteDC(pointDc);
-    pointDc = NULL;
-    DeleteDC(personaDc);
-	personaDc = NULL;
+    if(airDc) DeleteDC(airDc);
+    if(wallDc) DeleteDC(wallDc);
+    if(boxDc) DeleteDC(boxDc);
+    if(pointDc) DeleteDC(pointDc);
+    if(personaDc) DeleteDC(personaDc);
+	personaDc = airDc = wallDc = boxDc = pointDc = NULL;
 	return;
+}
+
+// 处理移动的代码
+// 上移动
+void MoveUp(void)
+{
+    int x = template[levelSelection].personaX;
+    int y = template[levelSelection].personaY;
+    if (y > 0 && template[levelSelection].scene[y - 1][x] != WALL)
+        template[levelSelection].personaY--;
+}
+// 下移动
+void MoveDown(void)
+{
+    int x = template[levelSelection].personaX;
+    int y = template[levelSelection].personaY;
+    if (y < 9 && template[levelSelection].scene[y + 1][x] != WALL)
+        template[levelSelection].personaY++;
+}
+// 左移动
+void MoveLeft(void)
+{
+    int x = template[levelSelection].personaX;
+    int y = template[levelSelection].personaY;
+    if (x > 0 && template[levelSelection].scene[y][x - 1] != WALL)
+        template[levelSelection].personaX--;
+}
+// 右移动
+void MoveRight(void)
+{
+    int x = template[levelSelection].personaX;
+    int y = template[levelSelection].personaY;
+    if (x < 9 && template[levelSelection].scene[y][x + 1] != WALL)
+        template[levelSelection].personaX++;
 }
