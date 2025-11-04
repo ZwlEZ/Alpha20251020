@@ -15,11 +15,19 @@ int levelSelection = 0;
 struct LEVEL
 {
 	unsigned char personaX, personaY;   // 人物坐标
+	unsigned char pointsX, pointsY;     // 积分点坐标
+	unsigned char pointsX_2, pointsY_2; // 第二个积分点坐标
+	unsigned char boxX, boxY;           // 箱子坐标
+	unsigned char boxX_2, boxY_2;       // 第二个箱子坐标
 	unsigned char scene[10][10];        // 场景数组
 }
 template[] =// 关卡模板数组
 {   // 关卡1
     5, 4,// 人物坐标
+    2, 2,// 积分点坐标
+    7, 7,// 第二个积分点坐标
+	5, 5,// 箱子坐标
+	4, 6,// 第二个箱子坐标
 	{// 数组内数字代表场景元素，1为墙壁，0为空气，3为箱子，2为积分点，4为人物（一个不会存在的值）
         1,1,1,1,1,1,1,1,1,1,
         1,0,0,0,0,0,0,0,0,1,
@@ -33,8 +41,12 @@ template[] =// 关卡模板数组
         1,1,1,1,1,1,1,1,1,1
     },
 	// 关卡2
-    1, 1,
-    {
+    1, 1,// 人物坐标
+    8, 8,// 积分点坐标
+	1, 8,// 第二个积分点坐标
+	2, 2,// 箱子坐标
+    6, 7,// 第二个箱子坐标
+    {// 数组内数字代表场景元素，1为墙壁，0为空气，3为箱子，2为积分点，4为人物（一个不会存在的值）
         1,1,1,1,1,1,1,1,1,1,
         1,0,0,0,0,0,0,0,2,1,
         1,0,3,0,1,1,1,1,0,1,
@@ -48,6 +60,10 @@ template[] =// 关卡模板数组
 	},
     // 关卡3
     1,2,
+	3,3,
+	8,8,
+	5,4,
+	4,6,
     {
 		1,1,1,1,1,1,1,1,1,1,
 		1,0,0,0,0,0,0,0,0,1,
@@ -62,6 +78,10 @@ template[] =// 关卡模板数组
     },
 	// 关卡4
 	8,1,
+	1,8,
+	1,8,
+	2,2,
+    6,7,
     {
         1,1,1,1,1,1,1,1,1,1,
         1,0,0,0,0,0,0,0,0,1,
@@ -76,6 +96,10 @@ template[] =// 关卡模板数组
 	},
     // 关卡5 - 中心对称
     4, 4,
+    2, 2,
+    6, 6,
+    3, 3,
+    5, 5,
     {
         1,1,1,1,1,1,1,1,1,1,
         1,2,0,0,0,0,0,0,2,1,
@@ -89,10 +113,14 @@ template[] =// 关卡模板数组
         1,1,1,1,1,1,1,1,1,1
     },
     // 关卡6 - 走廊迷宫
-    5, 4,
+    1, 1,
+    8, 1,
+    1, 8,
+    2, 2,
+    7, 7,
     {
         1,1,1,1,1,1,1,1,1,1,
-        1,2,0,0,1,0,0,0,2,1,
+        1,0,0,0,1,0,0,0,2,1,
         1,0,3,0,1,0,3,0,0,1,
         1,0,0,0,1,0,0,0,0,1,
         1,1,1,0,1,0,1,1,1,1,
@@ -104,6 +132,10 @@ template[] =// 关卡模板数组
     },
     // 关卡7 - 螺旋迷宫
     4, 1,
+    1, 4,
+    7, 7,
+    2, 3,
+    6, 6,
     {
         1,1,1,1,1,1,1,1,1,1,
         1,0,0,0,0,0,0,0,0,1,
@@ -118,6 +150,10 @@ template[] =// 关卡模板数组
     },
     // 关卡8 - 十字路口
     4, 4,
+    2, 2,
+    6, 6,
+    4, 2,
+    4, 6,
     {
         1,1,1,1,1,1,1,1,1,1,
         1,0,0,0,0,0,0,0,0,1,
@@ -132,6 +168,10 @@ template[] =// 关卡模板数组
     },
     // 关卡9 - 复杂迷宫
     1, 1,
+    8, 8,
+    5, 5,
+    2, 3,
+    7, 6,
     {
         1,1,1,1,1,1,1,1,1,1,
         1,0,0,0,1,0,0,0,0,1,
@@ -146,6 +186,10 @@ template[] =// 关卡模板数组
     },
     // 关卡10 - 最终挑战
     4, 8,
+    2, 2,
+    6, 6,
+    3, 4,
+    5, 4,
     {
         1,1,1,1,1,1,1,1,1,1,
         1,2,0,0,0,0,0,0,2,1,
@@ -160,7 +204,6 @@ template[] =// 关卡模板数组
     }
 };
 enum { AIR, WALL, POINTS_, BOX, PERSONA, SCORE };// 场景元素枚举
-unsigned char boxCounts = 0, scoreCounts = 0;
 
 // 窗口过程函数声明
 LRESULT CALLBACK WindowProc(HWND, UINT, WPARAM, LPARAM);
@@ -290,7 +333,6 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT mSgId, WPARAM wParam, LPARAM lParam)
 		HDC hdc = GetDC(hWnd);
 		DrawScene(hWnd, hdc);
 		ReleaseDC(hWnd, hdc);
-        if ((scoreCounts != 0) && (boxCounts == 0)) levelSelection += 1;
     }
 	return 0;
 
@@ -345,7 +387,6 @@ void DrawScene(HWND hWnd, HDC hdc)
 	HBITMAP memBmp = CreateCompatibleBitmap(hdc, 960, 960);
     SelectObject(memDc, memBmp);
 	// 绘制场景
-    boxCounts = 0, scoreCounts = 0;// 计算器
 	for (int y = 0; y < 10; y++)
 	{
 		for (int x = 0; x < 10; x++)
@@ -363,11 +404,9 @@ void DrawScene(HWND hWnd, HDC hdc)
 				break;
             case BOX:
                 BitBlt(memDc, x * 96, y * 96, 96, 96, boxDc, 0, 0, SRCCOPY);
-                boxCounts += 1;
                 break;
             case SCORE:
                 BitBlt(memDc, x * 96, y * 96, 96, 96, scoreDc, 0, 0, SRCCOPY);
-                scoreCounts += 1;
                 break;
 			}
 		}
@@ -407,42 +446,62 @@ void ReleaseResources(void)
 // 上移动
 void MoveUp(void)
 {
-    // 获取当前人物坐标
+	// 获取当前人物和箱子坐标
     int personaX = template[levelSelection].personaX;
     int personaY = template[levelSelection].personaY;
-    // 判断上方是否为墙壁
+	int boxX = template[levelSelection].boxX;
+	int boxY = template[levelSelection].boxY;
+	int boxX_2 = template[levelSelection].boxX_2;
+	int boxY_2 = template[levelSelection].boxY_2;
+	// 判断上方是否为墙壁
     if ((POINTS_ == template[levelSelection].scene[personaY - 1][personaX]) || (AIR == template[levelSelection].scene[personaY - 1][personaX]))
     {
         --template[levelSelection].personaY;
         return;
     }
-    // 判断上方是否为箱子，且箱子上方为空气或积分点
-    if (BOX == template[levelSelection].scene[personaY - 1][personaX])
+	// 判断上方是否为箱子，且箱子上方为空气或积分点
+    if ((boxX == personaX) && (boxY == personaY - 1))
     {
-        if (AIR == template[levelSelection].scene[personaY - 2][personaX])
+        if (POINTS_ == template[levelSelection].scene[boxY - 1][boxX])
         {
-            template[levelSelection].scene[personaY - 2][personaX] = BOX;
-            template[levelSelection].scene[personaY - 1][personaX] = AIR;
+            template[levelSelection].scene[boxY - 1][boxX] = SCORE;
+            template[levelSelection].scene[boxY][boxX] = AIR;
             --template[levelSelection].personaY;
+            template[levelSelection].boxX = 0;
+            template[levelSelection].boxY = 0;
             return;
         }
-        if (POINTS_ == template[levelSelection].scene[personaY - 2][personaX])
+        if ((AIR == template[levelSelection].scene[boxY - 1][boxX]) || (POINTS_ == template[levelSelection].scene[boxY - 1][boxX]))
         {
-            template[levelSelection].scene[personaY - 2][personaX] = SCORE;
-            template[levelSelection].scene[personaY - 1][personaX] = AIR;
+			template[levelSelection].scene[boxY][boxX] = AIR;
+			template[levelSelection].scene[boxY - 1][boxX] = BOX;
+            --template[levelSelection].boxY;
             --template[levelSelection].personaY;
             return;
         }
         return;
     }
-    // 当上方为得分时的逻辑
-    if ((SCORE == template[levelSelection].scene[personaY - 1][personaX]) && (AIR == template[levelSelection].scene[personaY - 2][personaX]))
+    if ((boxX_2 == personaX) && (boxY_2 == personaY - 1))
     {
-        template[levelSelection].scene[personaY - 2][personaX] = BOX;
-        template[levelSelection].scene[personaY - 1][personaX] = POINTS_;
-        --template[levelSelection].personaY;
+        if (POINTS_ == template[levelSelection].scene[boxY_2 - 1][boxX_2])
+        {
+            template[levelSelection].scene[boxY_2 - 1][boxX_2] = SCORE;
+            template[levelSelection].scene[boxY_2][boxX_2] = AIR;
+            --template[levelSelection].personaY;
+            template[levelSelection].boxX_2 = 0;
+            template[levelSelection].boxY_2 = 0;
+            return;
+        }
+        if ((AIR == template[levelSelection].scene[boxY_2 - 1][boxX_2]) || (POINTS_ == template[levelSelection].scene[boxY_2 - 1][boxX_2]))
+        {
+			template[levelSelection].scene[boxY_2][boxX_2] = AIR;
+			template[levelSelection].scene[boxY_2 - 1][boxX_2] = BOX;
+            --template[levelSelection].boxY_2;
+            --template[levelSelection].personaY;
+            return;
+        }
         return;
-    }
+    }    
 	return;
 }
 // 下移动
@@ -450,37 +509,53 @@ void MoveDown(void)
 {
 	int personaX = template[levelSelection].personaX;
 	int personaY = template[levelSelection].personaY;
-
+	int boxX = template[levelSelection].boxX;
+	int boxY = template[levelSelection].boxY;
+	int boxX_2 = template[levelSelection].boxX_2;
+    int boxY_2 = template[levelSelection].boxY_2;
     if ((POINTS_ == template[levelSelection].scene[personaY + 1][personaX]) || (AIR == template[levelSelection].scene[personaY + 1][personaX]))
     {
         ++template[levelSelection].personaY;
         return;
     }
-    if (BOX == template[levelSelection].scene[personaY + 1][personaX])
+    if ((boxX == personaX) && (boxY == personaY + 1))
     {
-        if (AIR == template[levelSelection].scene[personaY + 2][personaX])
+        if (POINTS_ == template[levelSelection].scene[boxY + 1][boxX])
         {
-            template[levelSelection].scene[personaY + 2][personaX] = BOX;
-            template[levelSelection].scene[personaY + 1][personaX] = AIR;
+            template[levelSelection].scene[boxY + 1][boxX] = SCORE;
+            template[levelSelection].scene[boxY][boxX] = AIR;
             ++template[levelSelection].personaY;
-            return;
+            template[levelSelection].boxX = 0;
+            template[levelSelection].boxY = 0;
         }
-        if (POINTS_ == template[levelSelection].scene[personaY + 2][personaX])
+        if ((AIR == template[levelSelection].scene[boxY + 1][boxX]) || (POINTS_ == template[levelSelection].scene[boxY + 1][boxX]))
         {
-            template[levelSelection].scene[personaY + 2][personaX] = SCORE;
-            template[levelSelection].scene[personaY + 1][personaX] = AIR;
+            template[levelSelection].scene[boxY][boxX] = AIR;
+            template[levelSelection].scene[boxY + 1][boxX] = BOX;
+            ++template[levelSelection].boxY;
             ++template[levelSelection].personaY;
-            return;
         }
         return;
     }
-    if ((SCORE == template[levelSelection].scene[personaY + 1][personaX]) && (AIR == template[levelSelection].scene[personaY + 2][personaX]))
+    if ((boxX_2 == personaX) && (boxY_2 == personaY + 1))
     {
-        template[levelSelection].scene[personaY + 2][personaX] = BOX;
-        template[levelSelection].scene[personaY + 1][personaX] = POINTS_;
-        ++template[levelSelection].personaY;
+        if (POINTS_ == template[levelSelection].scene[boxY_2 + 1][boxX_2])
+        {
+            template[levelSelection].scene[boxY_2 + 1][boxX_2] = SCORE;
+            template[levelSelection].scene[boxY_2][boxX_2] = AIR;
+            ++template[levelSelection].personaY;
+            template[levelSelection].boxX_2 = 0;
+            template[levelSelection].boxY_2 = 0;
+        }
+        if ((AIR == template[levelSelection].scene[boxY_2 + 1][boxX_2]) || (POINTS_ == template[levelSelection].scene[boxY_2 + 1][boxX_2]))
+        {
+            template[levelSelection].scene[boxY_2][boxX_2] = AIR;
+            template[levelSelection].scene[boxY_2 + 1][boxX_2] = BOX;
+            ++template[levelSelection].boxY_2;
+            ++template[levelSelection].personaY;
+        }
         return;
-    }
+	}
 	return;
 }
 // 左移动
@@ -488,36 +563,53 @@ void MoveLeft(void)
 {
 	int personaX = template[levelSelection].personaX;
     int personaY = template[levelSelection].personaY;
+	int boxX = template[levelSelection].boxX;
+	int boxY = template[levelSelection].boxY;
+	int boxX_2 = template[levelSelection].boxX_2;
+	int boxY_2 = template[levelSelection].boxY_2;
     if ((POINTS_ == template[levelSelection].scene[personaY][personaX - 1]) || (AIR == template[levelSelection].scene[personaY][personaX - 1]))
     {
         --template[levelSelection].personaX;
         return;
     }
-    if (BOX == template[levelSelection].scene[personaY][personaX - 1])
+   if ((boxX == personaX - 1) && (boxY == personaY))
     {
-        if (AIR == template[levelSelection].scene[personaY][personaX - 2])
-        {
-            template[levelSelection].scene[personaY][personaX - 2] = BOX;
-            template[levelSelection].scene[personaY][personaX - 1] = AIR;
+       if (POINTS_ == template[levelSelection].scene[boxY][boxX - 1])
+       {
+           template[levelSelection].scene[boxY][boxX - 1] = SCORE;
+           template[levelSelection].scene[boxY][boxX] = AIR;
+           --template[levelSelection].personaX;
+           template[levelSelection].boxX = 0;
+           template[levelSelection].boxY = 0;
+       }
+        if ((AIR == template[levelSelection].scene[boxY][boxX - 1]) || (POINTS_ == template[levelSelection].scene[boxY][boxX - 1]))
+		{
+            template[levelSelection].scene[boxY][boxX] = AIR;
+            template[levelSelection].scene[boxY][boxX - 1] = BOX;
+            --template[levelSelection].boxX;
             --template[levelSelection].personaX;
-            return;
-        }
-        if (POINTS_ == template[levelSelection].scene[personaY][personaX - 2])
-        {
-            template[levelSelection].scene[personaY][personaX - 2] = SCORE;
-            template[levelSelection].scene[personaY][personaX - 1] = AIR;
-            --template[levelSelection].personaX;
-            return;
         }
         return;
     }
-    if ((SCORE == template[levelSelection].scene[personaY][personaX - 1]) && (AIR == template[levelSelection].scene[personaY][personaX - 2]))
+    if ((boxX_2 == personaX - 1) && (boxY_2 == personaY))
     {
-        template[levelSelection].scene[personaY][personaX - 2] = BOX;
-        template[levelSelection].scene[personaY][personaX - 1] = POINTS_;
-        --template[levelSelection].personaX;
+        if (POINTS_ == template[levelSelection].scene[boxY_2][boxX_2 - 1])
+        {
+            template[levelSelection].scene[boxY_2][boxX_2 - 1] = SCORE;
+            template[levelSelection].scene[boxY_2][boxX_2] = AIR;
+            --template[levelSelection].personaX;
+            template[levelSelection].boxX_2 = 0;
+            template[levelSelection].boxY_2 = 0;
+        }
+        if ((AIR == template[levelSelection].scene[boxY_2][boxX_2 - 1]) || (POINTS_ == template[levelSelection].scene[boxY_2][boxX_2 - 1]))
+        {
+            template[levelSelection].scene[boxY_2][boxX_2] = AIR;
+            template[levelSelection].scene[boxY_2][boxX_2 - 1] = BOX;
+            --template[levelSelection].boxX_2;
+            --template[levelSelection].personaX;
+        }
         return;
-    }
+	}
 	return;
 }
 // 右移动
@@ -525,36 +617,53 @@ void MoveRight(void)
 {
 	int personaX = template[levelSelection].personaX;
 	int personaY = template[levelSelection].personaY;
+	int boxX = template[levelSelection].boxX;
+	int boxY = template[levelSelection].boxY;
+	int boxX_2 = template[levelSelection].boxX_2;
+	int boxY_2 = template[levelSelection].boxY_2;
     if ((POINTS_ == template[levelSelection].scene[personaY][personaX + 1]) || (AIR == template[levelSelection].scene[personaY][personaX + 1]))
     {
         ++template[levelSelection].personaX;
         return;
     }
-    if (BOX == template[levelSelection].scene[personaY][personaX + 1])
+    if ((boxX == personaX + 1) && (boxY == personaY))
     {
-        if (AIR == template[levelSelection].scene[personaY][personaX + 2])
+        if (POINTS_ == template[levelSelection].scene[boxY][boxX + 1])
         {
-            template[levelSelection].scene[personaY][personaX + 2] = BOX;
-            template[levelSelection].scene[personaY][personaX + 1] = AIR;
+            template[levelSelection].scene[boxY][boxX + 1] = SCORE;
+            template[levelSelection].scene[boxY][boxX] = AIR;
             ++template[levelSelection].personaX;
-            return;
+            template[levelSelection].boxX = 0;
+            template[levelSelection].boxY = 0;
         }
-        if (POINTS_ == template[levelSelection].scene[personaY][personaX + 2])
+        if ((AIR == template[levelSelection].scene[boxY][boxX + 1]) || (POINTS_ == template[levelSelection].scene[boxY][boxX + 1]))
         {
-            template[levelSelection].scene[personaY][personaX + 2] = SCORE;
-            template[levelSelection].scene[personaY][personaX + 1] = AIR;
+            template[levelSelection].scene[boxY][boxX] = AIR;
+            template[levelSelection].scene[boxY][boxX + 1] = BOX;
+            ++template[levelSelection].boxX;
             ++template[levelSelection].personaX;
-            return;
         }
         return;
     }
-    if ((SCORE == template[levelSelection].scene[personaY][personaX + 1]) && (AIR == template[levelSelection].scene[personaY][personaX + 2]))
+    if ((boxX_2 == personaX + 1) && (boxY_2 == personaY))
     {
-        template[levelSelection].scene[personaY][personaX + 2] = BOX;
-        template[levelSelection].scene[personaY][personaX + 1] = POINTS_;
-        ++template[levelSelection].personaX;
+        if (POINTS_ == template[levelSelection].scene[boxY_2][boxX_2 + 1])
+        {
+            template[levelSelection].scene[boxY_2][boxX_2 + 1] = SCORE;
+            template[levelSelection].scene[boxY_2][boxX_2] = AIR;
+            ++template[levelSelection].personaX;
+            template[levelSelection].boxX_2 = 0;
+            template[levelSelection].boxY_2 = 0;
+        }
+        if ((AIR == template[levelSelection].scene[boxY_2][boxX_2 + 1]) || (POINTS_ == template[levelSelection].scene[boxY_2][boxX_2 + 1]))
+        {
+            template[levelSelection].scene[boxY_2][boxX_2] = AIR;
+            template[levelSelection].scene[boxY_2][boxX_2 + 1] = BOX;
+            ++template[levelSelection].boxX_2;
+            ++template[levelSelection].personaX;
+        }
         return;
-    }
+	}
 	return;
 }
 
