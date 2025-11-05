@@ -1,4 +1,6 @@
 #include <windows.h>
+#include <stdio.h>
+#include <stddef.h>
 #include <stdbool.h>
 
 #include "resource.h"
@@ -7,11 +9,11 @@
 HINSTANCE hinstance = 0;
 
 // 位图和设备上下文声明
-HBITMAP airBmp = 0, wallBmp = 0, boxBmp = 0, pointBmp = 0, personaBmp = 0, scoreBmp = 0;
-HDC airDc = 0, wallDc = 0, boxDc = 0, pointDc = 0, personaDc = 0, scoreDc = 0;
+HBITMAP airBmp = 0, wallBmp = 0, boxBmp = 0, pointsBmp = 0, personaBmp = 0, scoreBmp = 0;
+HDC airDc = 0, wallDc = 0, boxDc = 0, pointsDc = 0, personaDc = 0, scoreDc = 0;
 
 // 关卡数据声明
-int levelSelection = 0;
+size_t levelSelection = 0;
 struct LEVEL
 {
 	unsigned char personaX, personaY;   // 人物坐标
@@ -123,8 +125,8 @@ template[] =// 关卡模板数组
         1,0,0,0,0,0,0,0,0,1,
         1,0,2,0,0,0,0,2,0,1,
         1,0,0,0,0,0,0,0,0,1,
-        1,0,0,0,0,0,0,0,0,1,
-        1,0,0,0,0,0,0,0,0,1,
+        1,0,0,0,0,3,0,0,0,1,
+        1,0,0,0,3,3,3,0,0,1,
         1,0,0,0,0,0,0,0,0,1,
         1,0,2,0,0,0,0,2,0,1,
         1,0,0,0,0,0,0,0,0,1,
@@ -135,13 +137,13 @@ template[] =// 关卡模板数组
     {
         1,1,1,1,1,1,1,1,1,1,
         1,0,0,0,1,0,0,0,0,1,
-        1,0,3,0,1,0,0,3,0,1,
+        1,0,3,0,0,0,0,3,0,1,
         1,0,0,0,1,0,0,0,0,1,
         1,1,1,0,1,1,1,1,0,1,
         1,0,0,0,0,0,0,0,0,1,
-        1,0,1,1,1,1,1,1,1,1,
+        1,0,1,0,1,1,1,1,1,1,
         1,0,0,0,0,0,0,0,0,1,
-        1,0,0,0,0,0,0,2,2,1,
+        1,2,0,0,0,0,0,0,2,1,
         1,1,1,1,1,1,1,1,1,1
     },
     // 关卡10 - 最终挑战
@@ -159,19 +161,24 @@ template[] =// 关卡模板数组
         1,1,1,1,1,1,1,1,1,1
     }
 };
-enum { AIR, WALL, POINTS_, BOX, PERSONA, SCORE };// 场景元素枚举
+size_t totalLevels = sizeof template / sizeof(template[0]); // 总关卡数
+enum { AIR, WALL, POINTS_, BOX, PERSONA, SCORE };           // 场景元素枚举
 unsigned char boxCounts = 0, scoreCounts = 0;
+struct LEVEL templateBackup = {0}; // 备份
 
 // 窗口过程函数声明
 LRESULT CALLBACK WindowProc(HWND, UINT, WPARAM, LPARAM);
 void LoadResources(HWND);
+void UpdateWindowTitle(HWND);
 void DrawScene(HWND, HDC);
 void ReleaseResources(void);
 void MoveUp(void);
 void MoveDown(void);
 void MoveLeft(void);
 void MoveRight(void);
-BOOL UpdateScore(BOOL, BOOL);
+void NextLevel(HWND);
+void ResetCurrentLevel(HWND);
+void BackupRestore(bool, size_t);
 
 // 程序入口点
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nCmdShow)
@@ -234,8 +241,9 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT mSgId, WPARAM wParam, LPARAM lParam)
     switch (mSgId)//函数的第二个参数
     {
     case WM_CREATE:// 窗口创建时的初始化代码
-        
 		LoadResources(hWnd);
+        UpdateWindowTitle(hWnd);
+        BackupRestore(true, levelSelection);
         return 0;
 
     case WM_PAINT:// 绘制窗口内容
@@ -266,33 +274,33 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT mSgId, WPARAM wParam, LPARAM lParam)
 		case 'W':
 		case 'w':
 			MoveUp();
-
             break;
 		case VK_DOWN:
 		case 'S':
 		case 's':
 			MoveDown();
-
 			break;
 		case VK_LEFT:
 		case 'A':
 		case 'a':
 			MoveLeft();
-
 			break;
 		case VK_RIGHT:
 		case 'D':
 		case 'd':
 			MoveRight();
-
 			break;
+        case 'r':
+        case 'R':
+            ResetCurrentLevel(hWnd);
+            return 0;
         }
 		HDC hdc = GetDC(hWnd);
 		DrawScene(hWnd, hdc);
 		ReleaseDC(hWnd, hdc);
-        if ((scoreCounts != 0) && (boxCounts == 0)) levelSelection += 1;
+        if ((scoreCounts != 0) && (boxCounts == 0)) NextLevel(hWnd);
     }
-	return 0;
+	    return 0;
 
     case WM_COMMAND:// 处理菜单和控件命令
   
@@ -315,7 +323,7 @@ void LoadResources(HWND hWnd)
 	airBmp = LoadBitmap(hinstance, MAKEINTRESOURCE(IDB_AIR));
 	wallBmp = LoadBitmap(hinstance, MAKEINTRESOURCE(IDB_WALLS));
 	boxBmp = LoadBitmap(hinstance, MAKEINTRESOURCE(IDB_BOX));
-	pointBmp = LoadBitmap(hinstance, MAKEINTRESOURCE(IDB_POINTS_));
+	pointsBmp = LoadBitmap(hinstance, MAKEINTRESOURCE(IDB_POINTS_));
     personaBmp = LoadBitmap(hinstance, MAKEINTRESOURCE(IDB_PERSONA));
 	scoreBmp = LoadBitmap(hinstance, MAKEINTRESOURCE(IDB_SCORE));
     // 创建内存设备上下文
@@ -323,19 +331,26 @@ void LoadResources(HWND hWnd)
     airDc = CreateCompatibleDC(hdc);
     wallDc = CreateCompatibleDC(hdc);
     boxDc = CreateCompatibleDC(hdc);
-	pointDc = CreateCompatibleDC(hdc);
+	pointsDc = CreateCompatibleDC(hdc);
     personaDc = CreateCompatibleDC(hdc);
 	scoreDc = CreateCompatibleDC(hdc);
     // 将位图选入设备上下文
     SelectObject(airDc, airBmp);
     SelectObject(wallDc, wallBmp);
     SelectObject(boxDc, boxBmp);
-    SelectObject(pointDc, pointBmp);
+    SelectObject(pointsDc, pointsBmp);
     SelectObject(personaDc, personaBmp);
 	SelectObject(scoreDc, scoreBmp);
 
     ReleaseDC(hWnd, hdc); // 释放屏幕设备上下文
 	return;
+}
+// 更新窗口标题显示当前关卡信息
+void UpdateWindowTitle(HWND hWnd)
+{
+    WCHAR title[100];
+    swprintf(title, 100, L"推箱子 - 内置关卡：第%zd关/共%zd关", levelSelection + 1, totalLevels);
+    SetWindowText(hWnd, title);
 }
 // 绘制函数（示例）
 void DrawScene(HWND hWnd, HDC hdc)
@@ -359,15 +374,15 @@ void DrawScene(HWND hWnd, HDC hdc)
 				BitBlt(memDc, x * 96, y * 96, 96, 96, wallDc, 0, 0, SRCCOPY);
 				break;
 			case POINTS_:
-				BitBlt(memDc, x * 96, y * 96, 96, 96, pointDc, 0, 0, SRCCOPY);
+				BitBlt(memDc, x * 96, y * 96, 96, 96, pointsDc, 0, 0, SRCCOPY);
 				break;
             case BOX:
                 BitBlt(memDc, x * 96, y * 96, 96, 96, boxDc, 0, 0, SRCCOPY);
-                boxCounts += 1;
+                ++boxCounts;
                 break;
             case SCORE:
                 BitBlt(memDc, x * 96, y * 96, 96, 96, scoreDc, 0, 0, SRCCOPY);
-                scoreCounts += 1;
+                ++scoreCounts;
                 break;
 			}
 		}
@@ -384,24 +399,25 @@ void DrawScene(HWND hWnd, HDC hdc)
 // 资源释放函数
 void ReleaseResources(void)
 {
-    // 释放位图资源
-	if(wallBmp) DeleteObject(wallBmp);
-	if(boxBmp) DeleteObject(boxBmp);
-	if(pointBmp) DeleteObject(pointBmp);
-    if(airBmp) DeleteObject(airBmp);
-	if(personaBmp) DeleteObject(personaBmp);
-	if (scoreBmp) DeleteObject(scoreBmp);
-	personaBmp = airBmp = wallBmp = boxBmp = pointBmp = scoreBmp = NULL;
     // 删除设备上下文
     if(airDc) DeleteDC(airDc);
     if(wallDc) DeleteDC(wallDc);
     if(boxDc) DeleteDC(boxDc);
-    if(pointDc) DeleteDC(pointDc);
+    if(pointsDc) DeleteDC(pointsDc);
     if(personaDc) DeleteDC(personaDc);
 	if (scoreDc) DeleteDC(scoreDc);
-	personaDc = airDc = wallDc = boxDc = pointDc = scoreDc = NULL;
+	personaDc = airDc = wallDc = boxDc = pointsDc = scoreDc = NULL;
+    // 释放位图资源
+	if(wallBmp) DeleteObject(wallBmp);
+	if(boxBmp) DeleteObject(boxBmp);
+	if(pointsBmp) DeleteObject(pointsBmp);
+    if(airBmp) DeleteObject(airBmp);
+	if(personaBmp) DeleteObject(personaBmp);
+	if (scoreBmp) DeleteObject(scoreBmp);
+	personaBmp = airBmp = wallBmp = boxBmp = pointsBmp = scoreBmp = NULL;
 	return;
 }
+
 
 // 处理移动的代码
 // 上移动
@@ -558,10 +574,55 @@ void MoveRight(void)
 	return;
 }
 
-// 得分处理函数（未实现）
-BOOL UpdateScore(BOOL sCore, BOOL sCore_2)
+
+// 切换到下一关和回到开始关
+void NextLevel(HWND hWnd)
 {
-    // 这里可以添加得分逻辑
-    
-    return true;
+    if (levelSelection < totalLevels - 1)
+    {
+        // 数据还原
+        BackupRestore(false, levelSelection);
+        // 显示过关消息
+        MessageBox(hWnd, L"恭喜！关卡完成！\n按下回车或空格继续", L"过关", MB_OK | MB_ICONINFORMATION);
+        // 切换到下一关
+        ++levelSelection;
+        // 备份数据
+        BackupRestore(true, levelSelection);
+    }
+    else
+    {
+        // 回到开始关卡
+        BackupRestore(false, levelSelection);
+        MessageBox(hWnd, L"恭喜！你已通关所有关卡！\n按下回车或空格，回到初始关卡", L"游戏通关", MB_OK | MB_ICONINFORMATION);
+        levelSelection = 0;
+        BackupRestore(true, levelSelection);
+    }
+        // 更新窗口标题
+        UpdateWindowTitle(hWnd);
+        // 重绘场景
+        InvalidateRect(hWnd, NULL, TRUE);
+    return;
+}
+// 重置当前关卡
+void ResetCurrentLevel(HWND hWnd)
+{
+    BackupRestore(false, levelSelection);
+    // 重绘场景
+    InvalidateRect(hWnd, NULL, TRUE);
+    MessageBox(hWnd, L"当前关卡已重置", L"重置", MB_OK | MB_ICONINFORMATION);
+}
+// 备份与还原
+void BackupRestore(bool cOondition, size_t lEvelsElection)
+{
+    if (cOondition)// 进行备份
+    {
+        templateBackup = template[lEvelsElection];
+        return;
+    }
+    else if (!cOondition)// 进行还原
+    {
+        template[lEvelsElection] = templateBackup;
+        return;
+    }
+    return;
 }
